@@ -1,0 +1,240 @@
+package model;
+
+public class Patient {
+    private int id;
+    private String name;
+    private int age;
+    private String contact;
+    private String email;
+
+    public Patient(int id, String name, int age, String contact, String email) {
+        this.id = id;
+        this.name = name;
+        this.age = age;
+        this.contact = contact;
+        this.email = email;
+    }
+
+    // Getters & Setters
+    public int getId() { return id; }
+    public String getName() { return name; }
+    public int getAge() { return age; }
+    public String getContact() { return contact; }
+    public String getEmail() { return email; }
+
+    @Override
+    public String toString() {
+        return "Patient ID=" + id + ", Name=" + name + ", Age=" + age;
+    }
+}
+package model;
+
+public class Doctor {
+    private int id;
+    private String name;
+    private String specialization;
+
+    public Doctor(int id, String name, String specialization) {
+        this.id = id;
+        this.name = name;
+        this.specialization = specialization;
+    }
+
+    public int getId() { return id; }
+    public String getName() { return name; }
+    public String getSpecialization() { return specialization; }
+
+    @Override
+    public String toString() {
+        return "Doctor ID=" + id + ", Name=" + name + ", Specialization=" + specialization;
+    }
+}
+package model;
+
+import java.time.LocalDateTime;
+
+public class Appointment {
+    private int id;
+    private int patientId;
+    private int doctorId;
+    private LocalDateTime dateTime;
+
+    public Appointment(int id, int patientId, int doctorId, LocalDateTime dateTime) {
+        this.id = id;
+        this.patientId = patientId;
+        this.doctorId = doctorId;
+        this.dateTime = dateTime;
+    }
+
+    public int getId() { return id; }
+    public int getPatientId() { return patientId; }
+    public int getDoctorId() { return doctorId; }
+    public LocalDateTime getDateTime() { return dateTime; }
+
+    @Override
+    public String toString() {
+        return "Appointment ID=" + id + " | Patient=" + patientId +
+               " | Doctor=" + doctorId + " | Date=" + dateTime;
+    }
+}
+package model;
+
+public class Billing {
+    private int billId;
+    private int appointmentId;
+    private double consultationFee;
+    private double medicineCost;
+
+    public Billing(int billId, int appointmentId, double consultationFee, double medicineCost) {
+        this.billId = billId;
+        this.appointmentId = appointmentId;
+        this.consultationFee = consultationFee;
+        this.medicineCost = medicineCost;
+    }
+
+    public double totalAmount() {
+        return consultationFee + medicineCost + (0.18 * (consultationFee + medicineCost));
+    }
+
+    @Override
+    public String toString() {
+        return "Bill ID=" + billId + " | Appointment=" + appointmentId +
+                " | Total=" + totalAmount();
+    }
+}
+package service;
+
+import model.Patient;
+import utils.ValidationUtils;
+import java.util.*;
+
+public class PatientService {
+
+    private Map<Integer, Patient> patients = new HashMap<>();
+
+    public void addPatient(Patient p) {
+        ValidationUtils.validatePatient(p);
+        if (patients.containsKey(p.getId()))
+            throw new RuntimeException("Patient already exists!");
+        patients.put(p.getId(), p);
+    }
+
+    public Patient getPatient(int id) {
+        return patients.get(id);
+    }
+
+    public void removePatient(int id) {
+        patients.remove(id);
+    }
+
+    public Collection<Patient> getAllPatients() {
+        return patients.values();
+    }
+}
+package service;
+
+import model.Doctor;
+import java.util.*;
+
+public class DoctorService {
+    private Map<Integer, Doctor> doctors = new HashMap<>();
+
+    public void addDoctor(Doctor d) {
+        doctors.put(d.getId(), d);
+    }
+
+    public Doctor getDoctor(int id) {
+        return doctors.get(id);
+    }
+}
+package service;
+
+import model.Appointment;
+import utils.ValidationUtils;
+import java.time.LocalDateTime;
+import java.util.*;
+
+public class AppointmentService {
+
+    private Map<Integer, Appointment> appointments = new HashMap<>();
+
+    public void bookAppointment(Appointment a) {
+        ValidationUtils.validateAppointment(a);
+
+        for (Appointment ap : appointments.values()) {
+            if (ap.getDoctorId() == a.getDoctorId() &&
+                ap.getDateTime().equals(a.getDateTime())) {
+                throw new RuntimeException("Doctor not available at this time!");
+            }
+        }
+        appointments.put(a.getId(), a);
+    }
+
+    public Collection<Appointment> getAppointments() {
+        return appointments.values();
+    }
+}
+package service;
+
+import model.Billing;
+import java.util.*;
+
+public class BillingService {
+
+    private Map<Integer, Billing> bills = new HashMap<>();
+
+    public void generateBill(Billing b) {
+        bills.put(b.getAppointmentId(), b);
+    }
+
+    public Billing getBill(int appointmentId) {
+        return bills.get(appointmentId);
+    }
+}
+package utils;
+
+import model.*;
+
+public class ValidationUtils {
+
+    public static void validatePatient(Patient p) {
+        if (p.getAge() <= 0 || p.getAge() > 120)
+            throw new RuntimeException("Invalid age!");
+        if (!p.getEmail().contains("@"))
+            throw new RuntimeException("Invalid email!");
+    }
+
+    public static void validateAppointment(Appointment a) {
+        if (a.getDateTime().isBefore(java.time.LocalDateTime.now()))
+            throw new RuntimeException("Appointment date must be future!");
+    }
+}
+import model.*;
+import service.*;
+import java.time.LocalDateTime;
+
+public class Main {
+    public static void main(String[] args) {
+
+        PatientService ps = new PatientService();
+        DoctorService ds = new DoctorService();
+        AppointmentService as = new AppointmentService();
+        BillingService bs = new BillingService();
+
+        // Add sample data
+        ps.addPatient(new Patient(1, "Riya", 22, "9876543210", "riya@gmail.com"));
+        ds.addDoctor(new Doctor(101, "Dr. Verma", "Cardiology"));
+
+        // Book appointment
+        Appointment a = new Appointment(1, 1, 101, LocalDateTime.now().plusDays(1));
+        as.bookAppointment(a);
+
+        // Generate bill
+        Billing b = new Billing(1, 1, 500, 350);
+        bs.generateBill(b);
+
+        System.out.println("All Patients: " + ps.getAllPatients());
+        System.out.println("Appointments: " + as.getAppointments());
+        System.out.println("Final Bill: " + bs.getBill(1));
+    }
+}
